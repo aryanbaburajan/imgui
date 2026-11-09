@@ -18851,6 +18851,8 @@ static void ImGui::DockNodeCalcTabBarLayout(const ImGuiDockNode* node, ImRect* o
     // Align docked tabs with the node edge when no left-hand menu button is present.
     if (!node->HasWindowMenuButton || style.WindowMenuButtonPosition != ImGuiDir_Left)
         r.Min.x = node->Pos.x;
+    if (!node->HasCloseButton && (!node->HasWindowMenuButton || style.WindowMenuButtonPosition != ImGuiDir_Right))
+        r.Max.x = node->Pos.x + node->Size.x;
     if (out_tab_bar_rect) { *out_tab_bar_rect = r; }
     if (out_window_menu_button_pos) { *out_window_menu_button_pos = window_menu_button_pos; }
 }

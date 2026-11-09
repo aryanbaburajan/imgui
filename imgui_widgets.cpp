@@ -9624,6 +9624,11 @@ static void ImGui::TabBarLayout(ImGuiTabBar* tab_bar)
     int shrink_buffer_indexes[3] = { 0, sections[0].TabCount + sections[2].TabCount, sections[0].TabCount };
     g.ShrinkWidthBuffer.resize(tab_bar->Tabs.Size);
 
+    // Docked window tabs share the available bar equally. Keep normal tab bars
+    // and hybrid bars with leading/trailing controls on their usual layout.
+    const bool equal_dock_tabs = (tab_bar->Flags & ImGuiTabBarFlags_DockNode) && sections[0].TabCount == 0 && sections[2].TabCount == 0 && sections[1].TabCount > 0;
+    const float dock_tab_space = ImMax(0.0f, tab_bar->BarRect.GetWidth() - g.Style.ItemInnerSpacing.x * (sections[1].TabCount - 1));
+
     // Compute ideal tabs widths + store them into shrink buffer
     ImGuiTabItem* most_recently_selected_tab = NULL;
     int curr_section_n = -1;
@@ -9648,16 +9653,19 @@ static void ImGui::TabBarLayout(ImGuiTabBar* tab_bar)
         tab->ContentWidth = (tab->RequestedWidth >= 0.0f) ? tab->RequestedWidth : TabItemCalcSize(tab_name, has_close_button_or_unsaved_marker).x;
 
         int section_n = TabItemGetSectionIdx(tab);
+        float layout_width = tab->ContentWidth;
+        if (equal_dock_tabs)
+            layout_width = ImMax(1.0f, IM_TRUNC(dock_tab_space * (tab_n + 1) / sections[1].TabCount) - IM_TRUNC(dock_tab_space * tab_n / sections[1].TabCount));
         ImGuiTabBarSection* section = &sections[section_n];
-        section->Width += tab->ContentWidth + (section_n == curr_section_n ? g.Style.ItemInnerSpacing.x : 0.0f);
+        section->Width += layout_width + (section_n == curr_section_n ? g.Style.ItemInnerSpacing.x : 0.0f);
         curr_section_n = section_n;
 
         // Store data so we can build an array sorted by width if we need to shrink tabs down
         IM_MSVC_WARNING_SUPPRESS(6385);
         ImGuiShrinkWidthItem* shrink_width_item = &g.ShrinkWidthBuffer[shrink_buffer_indexes[section_n]++];
         shrink_width_item->Index = tab_n;
-        shrink_width_item->Width = shrink_width_item->InitialWidth = tab->ContentWidth;
-        tab->Width = ImMax(tab->ContentWidth, 1.0f);
+        shrink_width_item->Width = shrink_width_item->InitialWidth = layout_width;
+        tab->Width = ImMax(layout_width, 1.0f);
     }
 
     // Compute total ideal width (used for e.g. auto-resizing a window)
